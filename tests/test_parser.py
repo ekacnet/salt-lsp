@@ -1,4 +1,5 @@
 from lsprotocol.types import Position
+
 from salt_lsp.parser import (
     RequisiteNode,
     RequisitesNode,
