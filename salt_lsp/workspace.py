@@ -154,7 +154,6 @@ class SlsFileWorkspace(Workspace):
 
     def _get_workspace_of_document(self, uri: Union[str, FileUri]) -> FileUri:
         for workspace_uri in self._folders:
-
             if is_relative_to(
                 Path(FileUri(uri).path), Path(FileUri(workspace_uri).path)
             ):

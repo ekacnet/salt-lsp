@@ -197,7 +197,6 @@ class Visitor:
 def tree_to_document_symbols(
     tree: Tree, state_completions: CompletionsDict
 ) -> List[types.DocumentSymbol]:
-
     res = []
 
     for elem in itertools.chain.from_iterable(
