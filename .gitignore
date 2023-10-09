@@ -134,3 +134,5 @@ clients/vscode/out/
 
 salt_lsp/data/states.pickle
 *.vsix
+
+poetry.lock
