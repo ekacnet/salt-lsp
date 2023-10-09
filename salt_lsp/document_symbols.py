@@ -9,7 +9,7 @@ from typing import Callable, Dict, List, Sequence, TypedDict, cast
 from lsprotocol import types
 
 from salt_lsp.base_types import CompletionsDict
-from salt_lsp.parser import (
+from salt_lsp.types import (
     AstNode,
     ExtendNode,
     IncludeNode,
@@ -42,9 +42,7 @@ class DocumentSymbolKWArgs(TypedDict):
 NODE_IDENTIFIERS: Dict[str, Callable[[AstNode], Optional[str]]] = {
     IncludeNode.__name__: lambda node: cast(IncludeNode, node).value,
     IncludesNode.__name__: lambda node: "includes",
-    StateParameterNode.__name__: lambda node: cast(
-        StateParameterNode, node
-    ).name,
+    StateParameterNode.__name__: lambda node: cast(StateParameterNode, node).name,
     StateCallNode.__name__: lambda node: cast(StateCallNode, node).name,
     StateNode.__name__: lambda node: cast(StateNode, node).identifier,
     RequisiteNode.__name__: lambda node: cast(RequisiteNode, node).module,
@@ -75,9 +73,7 @@ def _get_doc_from_module_name(
         if completer is None:
             return None
         submod_params = completer.state_params.get(submod_name)
-        return (
-            submod_params.documentation if submod_params is not None else None
-        )
+        return submod_params.documentation if submod_params is not None else None
 
     completer = state_completions.get(mod_name)
     return completer.state_docs if completer is not None else None
@@ -108,9 +104,7 @@ def get_children(
     children: Sequence[AstNode] = []
     if isinstance(node, IncludesNode):
         children = node.includes
-    elif isinstance(
-        node, (ExtendNode, RequisitesNode, StateCallNode, StateNode)
-    ):
+    elif isinstance(node, (ExtendNode, RequisitesNode, StateCallNode, StateNode)):
         children = node.get_children()
     else:
         return []
@@ -126,9 +120,9 @@ def get_children(
 def _document_symbol_init_kwargs(
     node: AstNode,
 ) -> Optional[DocumentSymbolKWArgs]:
-    string_identifier = NODE_IDENTIFIERS.get(
-        type(node).__name__, lambda node: None
-    )(node)
+    string_identifier = NODE_IDENTIFIERS.get(type(node).__name__, lambda node: None)(
+        node
+    )
     symbol_kind = (
         types.SymbolKind.String
         if isinstance(node, IncludeNode)

@@ -31,12 +31,8 @@ def add_arguments(parser):
     parser.add_argument(
         "--tcp", action="store_true", help="Use TCP server instead of stdio"
     )
-    parser.add_argument(
-        "--host", default="127.0.0.1", help="Bind to this address"
-    )
-    parser.add_argument(
-        "--port", type=int, default=2087, help="Bind to this port"
-    )
+    parser.add_argument("--host", default="127.0.0.1", help="Bind to this address")
+    parser.add_argument("--port", type=int, default=2087, help="Bind to this port")
     parser.add_argument(
         "--stop-after-init",
         action="store_true",

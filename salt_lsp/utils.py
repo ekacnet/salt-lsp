@@ -4,27 +4,19 @@ Utility functions to extract data from the files
 
 from __future__ import annotations
 
-from collections.abc import MutableMapping
 import os
 import os.path
 import shlex
 import subprocess
-from typing import (
-    Dict,
-    Generic,
-    Iterator,
-    List,
-    NewType,
-    Optional,
-    TypeVar,
-    Union,
-)
-from urllib.parse import urlparse, ParseResult
+from collections.abc import MutableMapping
+from typing import Dict, Generic, Iterator, List, NewType, Optional, TypeVar, Union
+from urllib.parse import ParseResult, urlparse
 
 from lsprotocol.types import Position, Range
 
-from salt_lsp import parser
-from salt_lsp.parser import AstNode, Tree
+from salt_lsp.types import AstNode
+from salt_lsp.types import Position as SaltLspPosition
+from salt_lsp.types import Tree
 
 
 def get_git_root(path: str) -> Optional[str]:
@@ -80,12 +72,10 @@ def get_sls_includes(path: str) -> List[str]:
 
 def construct_path_to_position(tree: Tree, pos: Position) -> List[AstNode]:
     found_node = None
-    parser_pos = parser.Position(line=pos.line, col=pos.character)
+    parser_pos = SaltLspPosition(line=pos.line, col=pos.character)
 
     def visitor(node: AstNode) -> bool:
-        if node.start <= parser_pos and (
-            node.end is None or parser_pos <= node.end
-        ):
+        if node.start <= parser_pos and (node.end is None or parser_pos <= node.end):
             nonlocal found_node
             found_node = node
         return True

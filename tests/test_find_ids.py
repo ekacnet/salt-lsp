@@ -1,8 +1,4 @@
-from lsprotocol.types import (
-    Location,
-    Range,
-    Position,
-)
+from lsprotocol.types import Location, Position, Range
 
 from conftest import open_file, open_workspace
 
@@ -17,9 +13,7 @@ def test_find_id_in_document(salt_client_server, sample_workspace):
 
     open_file(client, base_sls_path)
 
-    assert server.find_id_in_doc_and_includes(
-        "bernd", base_sls_uri
-    ) == Location(
+    assert server.find_id_in_doc_and_includes("bernd", base_sls_uri) == Location(
         uri=base_sls_uri,
         range=Range(
             start=Position(line=0, character=0),
@@ -38,13 +32,11 @@ def test_find_id_in_include(salt_client_server, sample_workspace):
 
     open_file(client, bar_sls_path)
 
-    assert server.find_id_in_doc_and_includes(
-        "/root/.fishrc", bar_sls_uri
-    ) == Location(
+    assert server.find_id_in_doc_and_includes("/root/.fishrc", bar_sls_uri) == Location(
         uri="file://" + str(sample_workspace / "quo.sls"),
         range=Range(
             start=Position(line=0, character=0),
-            end=Position(line=6, character=0),
+            end=Position(line=5, character=18),
         ),
     )
 
@@ -59,12 +51,10 @@ def test_find_id_in_indirect_include(salt_client_server, sample_workspace):
 
     open_file(client, foo_sls_path)
 
-    assert server.find_id_in_doc_and_includes(
-        "/root/.fishrc", foo_sls_uri
-    ) == Location(
+    assert server.find_id_in_doc_and_includes("/root/.fishrc", foo_sls_uri) == Location(
         uri="file://" + str(sample_workspace / "quo.sls"),
         range=Range(
             start=Position(line=0, character=0),
-            end=Position(line=6, character=0),
+            end=Position(line=5, character=18),
         ),
     )

@@ -9,29 +9,32 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union, cast
 
 from lsprotocol import types
 from lsprotocol.types import (
+    INITIALIZE,
+    TEXT_DOCUMENT_COMPLETION,
+    TEXT_DOCUMENT_DEFINITION,
+    TEXT_DOCUMENT_DID_CHANGE,
+    TEXT_DOCUMENT_DID_OPEN,
+    TEXT_DOCUMENT_DOCUMENT_SYMBOL,
     CompletionItem,
     CompletionList,
     CompletionOptions,
     CompletionParams,
     InitializeParams,
-    INITIALIZE,
-    TEXT_DOCUMENT_COMPLETION,
-    TEXT_DOCUMENT_DID_OPEN,
-    TEXT_DOCUMENT_DEFINITION,
-    TEXT_DOCUMENT_DOCUMENT_SYMBOL,
+    Position,
 )
 from pygls.server import LanguageServer
 
-from salt_lsp import __version__
-from salt_lsp import utils
-from salt_lsp.base_types import StateNameCompletion, SLS_LANGUAGE_ID
-from salt_lsp.workspace import SaltLspProto, SlsFileWorkspace
+from salt_lsp import __version__, utils
+from salt_lsp.base_types import SLS_LANGUAGE_ID, ActualCompletions, StateNameCompletion
 from salt_lsp.parser import (
     IncludesNode,
     RequisiteNode,
+    StateCallNode,
+    StateNode,
     StateParameterNode,
     Tree,
 )
+from salt_lsp.workspace import SaltLspProto, SlsFileWorkspace
 
 
 class SaltServer(LanguageServer):
@@ -73,10 +76,7 @@ class SaltServer(LanguageServer):
         self, params: types.CompletionParams
     ) -> List[Tuple[str, Optional[str]]]:
         """Complete state name at current position"""
-        assert (
-            params.context is not None
-            and params.context.trigger_character == "."
-        )
+        assert params.context is not None and params.context.trigger_character == "."
 
         doc = self.workspace.get_text_document(params.text_document.uri)
         contents = doc.source
@@ -96,7 +96,8 @@ class SaltServer(LanguageServer):
         state_name = contents[last_match.span()[1] : ind - 1]
         if state_name in self._state_name_completions:
             completer = self._state_name_completions[state_name]
-            return completer.provide_subname_completion()
+            _, completions = completer.provide_subname_completion()
+            return completions
         return []
 
     def find_id_in_doc_and_includes(
@@ -115,18 +116,16 @@ class SaltServer(LanguageServer):
             starting_uri,
         )
         if (tree := self.workspace.trees.get(starting_uri)) is None:
-            self.logger.error(
-                "Cannot search in '%s', no tree present", starting_uri
-            )
+            self.logger.error("Cannot search in '%s', no tree present", starting_uri)
             return None
 
         inc_of_uri = self.workspace.includes.get(starting_uri, [])
 
         # FIXME: need to take ordering into account:
         # https://docs.saltproject.io/en/latest/ref/states/compiler_ordering.html#the-include-statement
-        trees_and_uris_to_search: Sequence[
-            Tuple[Tree, Union[str, utils.FileUri]]
-        ] = [(tree, starting_uri)] + [
+        trees_and_uris_to_search: Sequence[Tuple[Tree, Union[str, utils.FileUri]]] = [
+            (tree, starting_uri)
+        ] + [
             (t, inc)
             for inc in inc_of_uri
             if (t := self.workspace.trees.get(inc)) is not None
@@ -135,16 +134,12 @@ class SaltServer(LanguageServer):
         for tree, uri in trees_and_uris_to_search:
             self.logger.debug("Searching in '%s'", uri)
             matching_states = [
-                state
-                for state in tree.states
-                if state.identifier == id_to_find
+                state for state in tree.states if state.identifier == id_to_find
             ]
             if len(matching_states) != 1:
                 continue
 
-            if (
-                lsp_range := utils.ast_node_to_range(matching_states[0])
-            ) is not None:
+            if (lsp_range := utils.ast_node_to_range(matching_states[0])) is not None:
                 self.logger.debug(
                     "found match at '%s', '%s", lsp_range.start, lsp_range.end
                 )
@@ -176,40 +171,36 @@ def setup_salt_server_capabilities(server: SaltServer) -> None:
         salt_server: SaltServer, params: CompletionParams
     ) -> Optional[CompletionList]:
         """Returns completion items."""
-        if (
-            params.context is not None
-            and params.context.trigger_character == "."
-        ):
+        if params.context is not None and params.context.trigger_character == ".":
             return CompletionList(
                 is_incomplete=False,
                 items=[
                     CompletionItem(label=sub_name, documentation=docs)
-                    for sub_name, docs in salt_server.complete_state_name(
-                        params
-                    )
+                    for sub_name, docs in salt_server.complete_state_name(params)
                 ],
             )
 
-        if (
-            tree := salt_server.workspace.trees.get(params.text_document.uri)
-        ) is None:
+        if (tree := salt_server.workspace.trees.get(params.text_document.uri)) is None:
             return None
 
         path = utils.construct_path_to_position(tree, params.position)
+
+        # StateParameterNode it means it's a yaml node starting with '-'
         if (
             path
             and isinstance(path[-1], IncludesNode)
-            or basename(params.text_document.uri) == "top.sls"
-            and isinstance(path[-1], StateParameterNode)
+            or (
+                basename(params.text_document.uri) == "top.sls"
+                and isinstance(path[-1], StateParameterNode)
+            )
         ):
             file_path = utils.FileUri(params.text_document.uri).path
             includes = utils.get_sls_includes(file_path)
             return CompletionList(
                 is_incomplete=False,
-                items=[
-                    CompletionItem(label=f" {include}") for include in includes
-                ],
+                items=[CompletionItem(label=f" {include}") for include in includes],
             )
+
         return None
 
     @server.feature(TEXT_DOCUMENT_DEFINITION)
@@ -242,8 +233,9 @@ def setup_salt_server_capabilities(server: SaltServer) -> None:
             "adding text document '%s' to the workspace",
             params.text_document.uri,
         )
-        doc = salt_server.workspace.get_text_document(params.text_document.uri)
         salt_server.workspace.put_text_document(params.text_document)
+        doc = salt_server.workspace.get_text_document(params.text_document.uri)
+        salt_server.logger.debug(f"doc after did_open = {doc} version = {doc.version}")
         return types.TextDocumentItem(
             uri=params.text_document.uri,
             language_id=SLS_LANGUAGE_ID,
@@ -251,12 +243,25 @@ def setup_salt_server_capabilities(server: SaltServer) -> None:
             version=doc.version or 0,
         )
 
+    @server.feature(TEXT_DOCUMENT_DID_CHANGE)
+    def did_change(salt_server: SaltServer, params: types.DidChangeTextDocumentParams):
+        """Text document did open notification.
+
+        This function registers the newly opened file with the salt server.
+        """
+        salt_server.logger.debug(
+            "Updating text document '%s' to the workspace",
+            params.text_document.uri,
+        )
+        salt_server.workspace.update_document(params.text_document)
+
+        doc = salt_server.workspace.get_text_document(params.text_document.uri)
+        salt_server.logger.debug(
+            f"doc after did_change = {doc} version = {doc.version}"
+        )
+
     @server.feature(TEXT_DOCUMENT_DOCUMENT_SYMBOL)
     def document_symbol(
         salt_server: SaltServer, params: types.DocumentSymbolParams
-    ) -> Optional[
-        Union[List[types.DocumentSymbol], List[types.SymbolInformation]]
-    ]:
-        return salt_server.workspace.document_symbols.get(
-            params.text_document.uri, []
-        )
+    ) -> Optional[Union[List[types.DocumentSymbol], List[types.SymbolInformation]]]:
+        return salt_server.workspace.document_symbols.get(params.text_document.uri, [])

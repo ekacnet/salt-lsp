@@ -523,9 +523,7 @@ def salt_client_server():
 
     yield client, server
 
-    shutdown_response = client.lsp.send_request(SHUTDOWN).result(
-        timeout=CALL_TIMEOUT
-    )
+    shutdown_response = client.lsp.send_request(SHUTDOWN).result(timeout=CALL_TIMEOUT)
     assert shutdown_response is None
 
     # exit the server
@@ -638,9 +636,7 @@ def open_workspace(
     ).result(timeout=request_timeout)
 
 
-def open_file(
-    client: LanguageServer, file_path: str, request_timeout: int = 5
-) -> None:
+def open_file(client: LanguageServer, file_path: str, request_timeout: int = 5) -> None:
     with open(file_path) as base_sls:
         client.lsp.notify(
             TEXT_DOCUMENT_DID_OPEN,

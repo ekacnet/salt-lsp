@@ -41,6 +41,14 @@ class SlsFileWorkspace(Workspace):
     all properties up to date.
     """
 
+    # Note from pygls
+    # If you need to do some additional processing of one of the messages listed below,
+    # register
+    # a feature with the same name and your handler will be called immediately after the
+    # corresponding built-in feature.
+    # That means that did_change, don't need to apply the changes they already were
+    # applied before
+
     def __init__(
         self, state_name_completions: CompletionsDict, *args, **kwargs
     ) -> None:
@@ -80,9 +88,7 @@ class SlsFileWorkspace(Workspace):
         """The list of includes of each SLS file in the workspace."""
         return self._includes
 
-    def _resolve_includes(
-        self, text_document_uri: Union[str, FileUri]
-    ) -> None:
+    def _resolve_includes(self, text_document_uri: Union[str, FileUri]) -> None:
         if (
             (tree := self._trees[text_document_uri]) is None
             or tree.includes is None
@@ -91,10 +97,7 @@ class SlsFileWorkspace(Workspace):
             return
 
         ws_folder = self._get_workspace_of_document(text_document_uri)
-        if (
-            ws_folder in self._top_paths
-            and self._top_paths[ws_folder] is not None
-        ):
+        if ws_folder in self._top_paths and self._top_paths[ws_folder] is not None:
             top_path = self._top_paths[ws_folder]
         else:
             top_path = ws_folder
@@ -142,7 +145,10 @@ class SlsFileWorkspace(Workspace):
     ) -> None:
         self.logger.debug("updating document '%s'", text_document.uri)
         uri = text_document.uri
-        tree = parse(self.get_text_document(uri).source)
+        tree = parse(
+            self._get_workspace_of_document(uri),
+            self.get_text_document(uri).source,
+        )
         self._trees[uri] = tree
 
         self._document_symbols[uri] = tree_to_document_symbols(
@@ -157,8 +163,7 @@ class SlsFileWorkspace(Workspace):
                 Path(FileUri(uri).path), Path(FileUri(workspace_uri).path)
             ):
                 return FileUri(workspace_uri)
-
-        return self.root_uri
+        return FileUri(self.root_uri)
 
     def add_folder(self, folder: types.WorkspaceFolder) -> None:
         super().add_folder(folder)
@@ -174,9 +179,8 @@ class SlsFileWorkspace(Workspace):
     def update_document(
         self,
         text_document: types.VersionedTextDocumentIdentifier,
-        change: types.TextDocumentContentChangeEvent,
     ) -> None:
-        super().update_document(text_document, change)
+        self.logger.debug(f"Update called for {text_document}")
         self._update_document(text_document)
 
     def remove_document(self, doc_uri: str) -> None:
