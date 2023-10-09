@@ -2,20 +2,19 @@
 contents utilizing the existing Workspace implementation from pygls.
 
 """
-from logging import getLogger, Logger, DEBUG
-from pathlib import Path
 import sys
+from logging import DEBUG, Logger, getLogger
+from pathlib import Path
 from typing import List, Optional, Union
 
 from lsprotocol import types
 from pygls.protocol import LanguageServerProtocol
 from pygls.workspace import Workspace
 
-from salt_lsp.base_types import CompletionsDict, SLS_LANGUAGE_ID
-from salt_lsp.utils import UriDict, FileUri, get_top
-from salt_lsp.parser import parse, Tree
+from salt_lsp.base_types import SLS_LANGUAGE_ID, CompletionsDict
 from salt_lsp.document_symbols import tree_to_document_symbols
-
+from salt_lsp.parser import Tree, parse
+from salt_lsp.utils import FileUri, UriDict, get_top
 
 if sys.version_info[1] <= 8:
 
@@ -41,6 +40,14 @@ class SlsFileWorkspace(Workspace):
     It hooks into the :ref:`Workspace`'s update function to automatically keep
     all properties up to date.
     """
+
+    # Note from pygls
+    # If you need to do some additional processing of one of the messages listed below,
+    # register
+    # a feature with the same name and your handler will be called immediately after the
+    # corresponding built-in feature.
+    # That means that did_change, don't need to apply the changes they already were
+    # applied before
 
     def __init__(
         self, state_name_completions: CompletionsDict, *args, **kwargs
@@ -143,7 +150,10 @@ class SlsFileWorkspace(Workspace):
     ) -> None:
         self.logger.debug("updating document '%s'", text_document.uri)
         uri = text_document.uri
-        tree = parse(self.get_text_document(uri).source)
+        tree = parse(
+            self._get_workspace_of_document(uri),
+            self.get_text_document(uri).source,
+        )
         self._trees[uri] = tree
 
         self._document_symbols[uri] = tree_to_document_symbols(
@@ -154,13 +164,11 @@ class SlsFileWorkspace(Workspace):
 
     def _get_workspace_of_document(self, uri: Union[str, FileUri]) -> FileUri:
         for workspace_uri in self._folders:
-
             if is_relative_to(
                 Path(FileUri(uri).path), Path(FileUri(workspace_uri).path)
             ):
-                return workspace_uri
-
-        return self.root_uri
+                return FileUri(workspace_uri)
+        return FileUri(self.root_uri)
 
     def add_folder(self, folder: types.WorkspaceFolder) -> None:
         super().add_folder(folder)
@@ -176,9 +184,8 @@ class SlsFileWorkspace(Workspace):
     def update_document(
         self,
         text_document: types.VersionedTextDocumentIdentifier,
-        change: types.TextDocumentContentChangeEvent,
     ) -> None:
-        super().update_document(text_document, change)
+        self.logger.debug(f"Update called for {text_document}")
         self._update_document(text_document)
 
     def remove_document(self, doc_uri: str) -> None:
@@ -193,6 +200,7 @@ class SlsFileWorkspace(Workspace):
     def put_text_document(self, text_document: types.TextDocumentItem) -> None:
         super().put_text_document(text_document)
         self._update_document(text_document)
+
 
 class SaltLspProto(LanguageServerProtocol):
     """Custom protocol that replaces the workspace with a SlsFileWorkspace

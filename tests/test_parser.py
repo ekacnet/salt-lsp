@@ -1,7 +1,11 @@
+import shutil
+
 from lsprotocol.types import Position
 from salt_lsp.parser import (RequisiteNode, RequisitesNode, StateCallNode,
                              StateNode, StateParameterNode, Tree, parse)
 from salt_lsp.utils import construct_path_to_position
+
+from tests.utils import doc_to_fileuri
 
 MASTER_DOT_SLS = """saltmaster.packages:
   pkg.installed:
@@ -50,7 +54,20 @@ rootco-salt-backup.timer:
       - file: /etc/systemd/system/rootco-salt-backup.timer
 """
 
-MASTER_DOT_SLS_TREE = parse(MASTER_DOT_SLS)
+MASTER_DOT_SLS_TREE = None
+
+
+def setup_module(module):
+    directory, sls_uri = doc_to_fileuri(MASTER_DOT_SLS)
+    module.directory = directory
+    global MASTER_DOT_SLS_TREE
+    MASTER_DOT_SLS_TREE = parse(sls_uri, MASTER_DOT_SLS)
+
+
+def teardown_module(module):
+    if module.directory:
+        shutil.rmtree(module.directory)
+        module.directory = None
 
 
 def test_path_to_pkgs_list():
@@ -131,5 +148,5 @@ def test_path_before_target():
 
 def test_tree_as_string():
     out = MASTER_DOT_SLS_TREE.as_string()
-    assert "T(0,0) <-> (45,0)" in out[0]
-    assert "|_P pkgs (2,4) <-> (6,4)" in out[3]
+    assert "T(1,1) <-> (45,59)" in out[0]
+    assert "|_P pkgs (3,5) <-> (7,5)" in out[3]

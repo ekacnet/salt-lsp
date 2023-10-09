@@ -4,6 +4,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 SLS_LANGUAGE_ID = "sls"
 
+StateName = str
+StateDoc = str
+ActualCompletion = Tuple[StateName, Optional[StateDoc]]
+ActualCompletions = List[ActualCompletion]
 
 @dataclass(frozen=True)
 class StateParameters:
@@ -37,19 +41,23 @@ class StateNameCompletion:
 
         self.state_sub_names: List[str] = list(self.state_params.keys())
 
-    def provide_subname_completion(self) -> List[Tuple[str, Optional[str]]]:
+    def provide_subname_completion(self, prefix: str = None) -> Tuple[bool, ActualCompletions]:
         """
         This function provides the names and docstrings of the submodules of
         this state.
+        If prefix is specified only return completion that starts with this prefix
         E.g. for the file state, it returns:
         [("absent", "doc of absent"), ("accumulated", "doc of accumulated"), ]
 
         The documentation is not guaranteed to be present and can be None.
         """
-        return [
+        completions = [
             (name, state_params.documentation)
             for name, state_params in self.state_params.items()
         ]
+        if prefix is None:
+            return True, completions
+        return False, list(filter(lambda x: x[0].startswith(prefix), completions))
 
     def provide_param_completion(self, submod_name: str) -> List[str]:
         return list(self.state_params[submod_name].parameters.keys())

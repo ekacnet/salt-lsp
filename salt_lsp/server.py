@@ -8,30 +8,20 @@ from os.path import basename
 from typing import Dict, List, Optional, Sequence, Tuple, Union, cast
 
 from lsprotocol import types
-from lsprotocol.types import (
-    CompletionItem,
-    CompletionList,
-    CompletionOptions,
-    CompletionParams,
-    InitializeParams,
-    INITIALIZE,
-    TEXT_DOCUMENT_COMPLETION,
-    TEXT_DOCUMENT_DID_OPEN,
-    TEXT_DOCUMENT_DEFINITION,
-    TEXT_DOCUMENT_DOCUMENT_SYMBOL,
-)
+from lsprotocol.types import (INITIALIZE, TEXT_DOCUMENT_COMPLETION,
+                              TEXT_DOCUMENT_DEFINITION,
+                              TEXT_DOCUMENT_DID_CHANGE, TEXT_DOCUMENT_DID_OPEN,
+                              TEXT_DOCUMENT_DOCUMENT_SYMBOL, CompletionItem,
+                              CompletionList, CompletionOptions,
+                              CompletionParams, InitializeParams, Position)
 from pygls.server import LanguageServer
 
-from salt_lsp import __version__
-from salt_lsp import utils
-from salt_lsp.base_types import StateNameCompletion, SLS_LANGUAGE_ID
+from salt_lsp import __version__, utils
+from salt_lsp.base_types import (SLS_LANGUAGE_ID, ActualCompletions,
+                                 StateNameCompletion)
+from salt_lsp.parser import (IncludesNode, RequisiteNode, StateCallNode,
+                             StateNode, StateParameterNode, Tree)
 from salt_lsp.workspace import SaltLspProto, SlsFileWorkspace
-from salt_lsp.parser import (
-    IncludesNode,
-    RequisiteNode,
-    StateParameterNode,
-    Tree,
-)
 
 
 class SaltServer(LanguageServer):
@@ -96,7 +86,8 @@ class SaltServer(LanguageServer):
         state_name = contents[last_match.span()[1] : ind - 1]
         if state_name in self._state_name_completions:
             completer = self._state_name_completions[state_name]
-            return completer.provide_subname_completion()
+            _, completions = completer.provide_subname_completion()
+            return completions
         return []
 
     def find_id_in_doc_and_includes(
@@ -196,11 +187,15 @@ def setup_salt_server_capabilities(server: SaltServer) -> None:
             return None
 
         path = utils.construct_path_to_position(tree, params.position)
+
+        # StateParameterNode it means it's a yaml node starting with '-'
         if (
             path
             and isinstance(path[-1], IncludesNode)
-            or basename(params.text_document.uri) == "top.sls"
-            and isinstance(path[-1], StateParameterNode)
+            or (
+                basename(params.text_document.uri) == "top.sls"
+                and isinstance(path[-1], StateParameterNode)
+            )
         ):
             file_path = utils.FileUri(params.text_document.uri).path
             includes = utils.get_sls_includes(file_path)
@@ -210,6 +205,7 @@ def setup_salt_server_capabilities(server: SaltServer) -> None:
                     CompletionItem(label=f" {include}") for include in includes
                 ],
             )
+
         return None
 
     @server.feature(TEXT_DOCUMENT_DEFINITION)
@@ -242,13 +238,35 @@ def setup_salt_server_capabilities(server: SaltServer) -> None:
             "adding text document '%s' to the workspace",
             params.text_document.uri,
         )
-        doc = salt_server.workspace.get_text_document(params.text_document.uri)
         salt_server.workspace.put_text_document(params.text_document)
+        doc = salt_server.workspace.get_text_document(params.text_document.uri)
+        salt_server.logger.debug(
+            f"doc after did_open = {doc} version = {doc.version}"
+        )
         return types.TextDocumentItem(
             uri=params.text_document.uri,
             language_id=SLS_LANGUAGE_ID,
             text=params.text_document.text or "",
             version=doc.version or 0,
+        )
+
+    @server.feature(TEXT_DOCUMENT_DID_CHANGE)
+    def did_change(
+        salt_server: SaltServer, params: types.DidChangeTextDocumentParams
+    ):
+        """Text document did open notification.
+
+        This function registers the newly opened file with the salt server.
+        """
+        salt_server.logger.debug(
+            "Updating text document '%s' to the workspace",
+            params.text_document.uri,
+        )
+        salt_server.workspace.update_document(params.text_document)
+
+        doc = salt_server.workspace.get_text_document(params.text_document.uri)
+        salt_server.logger.debug(
+            f"doc after did_change = {doc} version = {doc.version}"
         )
 
     @server.feature(TEXT_DOCUMENT_DOCUMENT_SYMBOL)

@@ -1,7 +1,13 @@
-import yaml
+import shutil
 
-from salt_lsp.parser import *
-from typing import Callable
+import yaml
+from salt_lsp.parser import parse
+from salt_lsp.types import (AstNode, ExtendNode, IncludeNode, IncludesNode,
+                            Position, RequisiteNode, RequisitesNode,
+                            StateCallNode, StateNode, StateParameterNode,
+                            TokenNode, Tree)
+
+from tests.utils import doc_to_fileuri
 
 
 class TestIncludeNode:
@@ -31,13 +37,15 @@ def test_includes():
   - foo.bar
   - web
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=3, col=0),
+        end=Position(line=2, col=7),
         includes=IncludesNode(
             start=Position(line=0, col=0),
-            end=Position(line=3, col=0),
+            end=Position(line=2, col=7),
             includes=[
                 IncludeNode(
                     start=Position(line=1, col=2),
@@ -60,19 +68,21 @@ def test_simple_state():
     - user: root
     - group: root
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=4, col=0),
+        end=Position(line=3, col=17),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
-                end=Position(line=4, col=0),
+                end=Position(line=3, col=17),
                 identifier="/etc/systemd/system/rootco-salt-backup.service",
                 states=[
                     StateCallNode(
                         start=Position(line=1, col=2),
-                        end=Position(line=4, col=0),
+                        end=Position(line=3, col=17),
                         name="file.managed",
                         parameters=[
                             StateParameterNode(
@@ -83,7 +93,7 @@ def test_simple_state():
                             ),
                             StateParameterNode(
                                 start=Position(line=3, col=4),
-                                end=Position(line=4, col=0),
+                                end=Position(line=3, col=17),
                                 name="group",
                                 value="root",
                             ),
@@ -102,22 +112,24 @@ def test_extend():
       - user: root
       - group: root
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=5, col=0),
+        end=Position(line=4, col=19),
         extend=ExtendNode(
             start=Position(line=0, col=0),
-            end=Position(line=5, col=0),
+            end=Position(line=4, col=19),
             states=[
                 StateNode(
                     start=Position(line=1, col=2),
-                    end=Position(line=5, col=0),
+                    end=Position(line=4, col=19),
                     identifier="/etc/systemd/system/rootco-salt-backup.service",
                     states=[
                         StateCallNode(
                             start=Position(line=2, col=4),
-                            end=Position(line=5, col=0),
+                            end=Position(line=4, col=19),
                             name="file.managed",
                             parameters=[
                                 StateParameterNode(
@@ -128,7 +140,7 @@ def test_extend():
                                 ),
                                 StateParameterNode(
                                     start=Position(line=4, col=6),
-                                    end=Position(line=5, col=0),
+                                    end=Position(line=4, col=19),
                                     name="group",
                                     value="root",
                                 ),
@@ -150,19 +162,21 @@ def test_requisites():
       - file: /foo/bar
       - service: libvirtd
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=7, col=0),
+        end=Position(line=6, col=25),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
-                end=Position(line=7, col=0),
+                end=Position(line=6, col=25),
                 identifier="/etc/systemd/system/rootco-salt-backup.service",
                 states=[
                     StateCallNode(
                         start=Position(line=1, col=2),
-                        end=Position(line=7, col=0),
+                        end=Position(line=6, col=25),
                         name="file.managed",
                         parameters=[
                             StateParameterNode(
@@ -181,7 +195,7 @@ def test_requisites():
                         requisites=[
                             RequisitesNode(
                                 start=Position(line=4, col=4),
-                                end=Position(line=7, col=0),
+                                end=Position(line=6, col=25),
                                 kind="require",
                                 requisites=[
                                     RequisiteNode(
@@ -192,7 +206,7 @@ def test_requisites():
                                     ),
                                     RequisiteNode(
                                         start=Position(line=6, col=6),
-                                        end=Position(line=7, col=0),
+                                        end=Position(line=6, col=25),
                                         module="service",
                                         reference="libvirtd",
                                     ),
@@ -225,24 +239,26 @@ def test_complex_parameter_state():
       - sshd
       - git
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=6, col=0),
+        end=Position(line=5, col=11),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
-                end=Position(line=6, col=0),
+                end=Position(line=5, col=11),
                 identifier="saltmaster.packages",
                 states=[
                     StateCallNode(
                         start=Position(line=1, col=2),
-                        end=Position(line=6, col=0),
+                        end=Position(line=5, col=11),
                         name="pkg.installed",
                         parameters=[
                             StateParameterNode(
                                 start=Position(line=2, col=4),
-                                end=Position(line=6, col=0),
+                                end=Position(line=5, col=11),
                                 name="pkgs",
                                 value=[
                                     TokenNode(
@@ -363,19 +379,21 @@ def test_duplicate_key():
     - user: root
     - user: bar
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=4, col=0),
+        end=Position(line=3, col=15),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
-                end=Position(line=4, col=0),
+                end=Position(line=3, col=15),
                 identifier="/etc/systemd/system/rootco-salt-backup.service",
                 states=[
                     StateCallNode(
                         start=Position(line=1, col=2),
-                        end=Position(line=4, col=0),
+                        end=Position(line=3, col=15),
                         name="file.managed",
                         parameters=[
                             StateParameterNode(
@@ -386,7 +404,7 @@ def test_duplicate_key():
                             ),
                             StateParameterNode(
                                 start=Position(line=3, col=4),
-                                end=Position(line=4, col=0),
+                                end=Position(line=3, col=15),
                                 name="user",
                                 value="bar",
                             ),
@@ -411,10 +429,12 @@ git -C /srv/salt pull -q:
   cron.present:
     - user: root
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=11, col=0),
+        end=Position(line=10, col=16),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
@@ -465,17 +485,17 @@ git -C /srv/salt pull -q:
             ),
             StateNode(
                 start=Position(line=8, col=0),
-                end=Position(line=11, col=0),
+                end=Position(line=10, col=16),
                 identifier="git -C /srv/salt pull -q",
                 states=[
                     StateCallNode(
                         start=Position(line=9, col=2),
-                        end=Position(line=11, col=0),
+                        end=Position(line=10, col=16),
                         name="cron.present",
                         parameters=[
                             StateParameterNode(
                                 start=Position(line=10, col=4),
-                                end=Position(line=11, col=0),
+                                end=Position(line=10, col=16),
                                 name="user",
                                 value="root",
                             ),
@@ -493,19 +513,21 @@ def test_empty_parameter():
     -
     - target: /srv/salt
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=4, col=0),
+        end=Position(line=3, col=23),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
-                end=Position(line=4, col=0),
+                end=Position(line=3, col=23),
                 identifier="/srv/git/salt-states",
                 states=[
                     StateCallNode(
                         start=Position(line=1, col=2),
-                        end=Position(line=4, col=0),
+                        end=Position(line=3, col=23),
                         name="file.symlink",
                         parameters=[
                             StateParameterNode(
@@ -516,7 +538,7 @@ def test_empty_parameter():
                             ),
                             StateParameterNode(
                                 start=Position(line=3, col=4),
-                                end=Position(line=4, col=0),
+                                end=Position(line=3, col=23),
                                 name="target",
                                 value="/srv/salt",
                             ),
@@ -534,19 +556,21 @@ def test_empty_last_parameter():
     - target: /srv/salt
     -
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=4, col=0),
+        end=Position(line=3, col=5),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
-                end=Position(line=4, col=0),
+                end=Position(line=3, col=5),
                 identifier="/srv/git/salt-states",
                 states=[
                     StateCallNode(
                         start=Position(line=1, col=2),
-                        end=Position(line=4, col=0),
+                        end=Position(line=3, col=5),
                         name="file.symlink",
                         parameters=[
                             StateParameterNode(
@@ -557,7 +581,7 @@ def test_empty_last_parameter():
                             ),
                             StateParameterNode(
                                 start=Position(line=3, col=4),
-                                end=Position(line=4, col=0),
+                                end=Position(line=3, col=5),
                                 name=None,
                                 value=None,
                             ),
@@ -575,19 +599,21 @@ def test_top_sls():
     - common
     - ca
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=4, col=0),
+        end=Position(line=3, col=8),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
-                end=Position(line=4, col=0),
+                end=Position(line=3, col=8),
                 identifier="base",
                 states=[
                     StateCallNode(
                         start=Position(line=1, col=2),
-                        end=Position(line=4, col=0),
+                        end=Position(line=3, col=8),
                         name="*",
                         parameters=[
                             StateParameterNode(
@@ -598,7 +624,7 @@ def test_top_sls():
                             ),
                             StateParameterNode(
                                 start=Position(line=3, col=4),
-                                end=Position(line=4, col=0),
+                                end=Position(line=3, col=8),
                                 name="ca",
                                 value=None,
                             ),
@@ -614,10 +640,12 @@ def test_state_no_param():
     content = """jdoe:
   user.present
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=2, col=0),
+        end=Position(line=1, col=14),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
@@ -638,10 +666,12 @@ def test_state_no_param():
 def test_state_unfinished_state_id():
     content = """jdoe
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=1, col=0),
+        end=Position(line=0, col=4),
         states=[
             StateNode(
                 start=Position(line=0, col=0),
@@ -658,8 +688,11 @@ def test_scan_error():
     - user: root
     - group: root
   virt
+
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
         end=Position(line=5, col=0),
@@ -705,7 +738,9 @@ def test_visit():
     - user: root
     - group: root
 """
-    tree = parse(content)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     pos = Position(line=2, col=8)
     found_node = None
 
@@ -728,7 +763,7 @@ def test_pop_breadcrumb_from_flow_sequence():
     """
     This is a regression test for https://github.com/dcermak/salt-lsp/issues/3
     """
-    sls_file = """apache2:
+    content = """apache2:
    pkg.installed: []
    service.running:
      - enable: true
@@ -736,15 +771,18 @@ def test_pop_breadcrumb_from_flow_sequence():
        - pkg: apache2
    file.managed: {}
 """
-    assert parse(sls_file) == Tree(
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
+    assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=7, col=0),
+        end=Position(line=6, col=19),
         includes=None,
         extend=None,
         states=[
             StateNode(
                 start=Position(line=0, col=0),
-                end=Position(line=7, col=0),
+                end=Position(line=6, col=19),
                 identifier="apache2",
                 states=[
                     StateCallNode(
@@ -796,7 +834,7 @@ def test_pop_breadcrumb_from_flow_sequence():
 
 
 def test_list_index_out_of_range():
-    contents = """
+    content = """
 root:
   user.present
 
@@ -805,10 +843,12 @@ ilmehtar:
     - fullname: Richard Brown
     - home: /home/ilmehtar
 """
-    tree = parse(contents)
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
     assert tree == Tree(
         start=Position(line=0, col=0),
-        end=Position(line=8, col=0),
+        end=Position(line=7, col=26),
         includes=None,
         extend=None,
         states=[
@@ -828,12 +868,12 @@ ilmehtar:
             ),
             StateNode(
                 start=Position(line=4, col=0),
-                end=Position(line=8, col=0),
+                end=Position(line=7, col=26),
                 identifier="ilmehtar",
                 states=[
                     StateCallNode(
                         start=Position(line=5, col=2),
-                        end=Position(line=8, col=0),
+                        end=Position(line=7, col=26),
                         name="user.present",
                         parameters=[
                             StateParameterNode(
@@ -844,7 +884,7 @@ ilmehtar:
                             ),
                             StateParameterNode(
                                 start=Position(line=7, col=4),
-                                end=Position(line=8, col=0),
+                                end=Position(line=7, col=26),
                                 name="home",
                                 value="/home/ilmehtar",
                             ),
@@ -853,5 +893,72 @@ ilmehtar:
                     )
                 ],
             ),
+        ],
+    )
+
+
+def test_jinja():
+    content = """/etc/systemd/system/rootco-salt-backup.service:
+  file.managed:
+    - user: {{ pillar.get('user').get('name') }}
+    - group: {{ grains.group }}
+    - require:
+      - file: /foo/bar
+      - service: libvirtd
+"""
+    directory, uri = doc_to_fileuri(content)
+    tree = parse(uri, content)
+    shutil.rmtree(directory)
+    assert tree == Tree(
+        start=Position(line=0, col=0),
+        end=Position(line=6, col=25),
+        states=[
+            StateNode(
+                start=Position(line=0, col=0),
+                end=Position(line=6, col=25),
+                identifier="/etc/systemd/system/rootco-salt-backup.service",
+                states=[
+                    StateCallNode(
+                        start=Position(line=1, col=2),
+                        end=Position(line=6, col=25),
+                        name="file.managed",
+                        parameters=[
+                            StateParameterNode(
+                                start=Position(line=2, col=4),
+                                end=Position(line=3, col=4),
+                                name="user",
+                                value="pillar.get('user').get('name')",
+                            ),
+                            StateParameterNode(
+                                start=Position(line=3, col=4),
+                                end=Position(line=4, col=4),
+                                name="group",
+                                value="grains.group",
+                            ),
+                        ],
+                        requisites=[
+                            RequisitesNode(
+                                start=Position(line=4, col=4),
+                                end=Position(line=6, col=25),
+                                kind="require",
+                                requisites=[
+                                    RequisiteNode(
+                                        start=Position(line=5, col=6),
+                                        end=Position(line=6, col=6),
+                                        module="file",
+                                        reference="/foo/bar",
+                                    ),
+                                    RequisiteNode(
+                                        start=Position(line=6, col=6),
+                                        end=Position(line=6, col=25),
+                                        module="service",
+                                        reference="libvirtd",
+                                    ),
+                                ],
+                            )
+                        ],
+                    )
+                ],
+            )
         ],
     )

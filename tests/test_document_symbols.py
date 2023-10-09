@@ -1,8 +1,10 @@
-from lsprotocol import types
+import shutil
 
+from lsprotocol import types
 from salt_lsp.document_symbols import tree_to_document_symbols
 from salt_lsp.parser import parse
 
+from tests.utils import doc_to_fileuri
 
 SLS_FILE = """include:
   - opensuse
@@ -25,14 +27,26 @@ touch /var/log:
   file: []
 """
 
+TREE = None
 
-TREE = parse(SLS_FILE)
+
+def setup_module(module):
+    directory, sls_uri = doc_to_fileuri(SLS_FILE)
+    module.directory = directory
+    global TREE
+    TREE = parse(sls_uri, SLS_FILE)
+
+
+def teardown_module(module):
+    if module.directory:
+        shutil.rmtree(module.directory)
+        module.directory = None
 
 
 def test_document_symbols(file_name_completer):
     doc_symbols = tree_to_document_symbols(TREE, file_name_completer)
 
-    assert doc_symbols == [
+    expected = [
         types.DocumentSymbol(
             name="includes",
             kind=types.SymbolKind.Object,
@@ -215,7 +229,7 @@ See also https://docs.saltproject.io/en/latest/ref/states/include.html
             kind=types.SymbolKind.Object,
             range=types.Range(
                 start=types.Position(line=17, character=0),
-                end=types.Position(line=19, character=0),
+                end=types.Position(line=18, character=10),
             ),
             selection_range=types.Range(
                 start=types.Position(line=17, character=0),
@@ -240,3 +254,6 @@ See also https://docs.saltproject.io/en/latest/ref/states/include.html
             ],
         ),
     ]
+    assert len(doc_symbols) == len(expected)
+    for i in range(0, len(doc_symbols)):
+        assert doc_symbols[i] == expected[i]

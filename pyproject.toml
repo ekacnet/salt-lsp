@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "salt_lsp"
-version = "0.0.1"
+version = "0.0.2"
 description = "Salt Language Server Protocol Server"
 authors = ["Dan Čermák <dcermak@suse.com>", "Cédric Bosdonnat <cbosdonnat@suse.com>"]
 license = "Apache-2.0"
@@ -37,4 +37,4 @@ addopts = "-vv --cov=salt_lsp --cov-report term --cov-report html --cov-report x
 xfail_strict = true
 
 [tool.black]
-line-length = 79
+line-length = 88
