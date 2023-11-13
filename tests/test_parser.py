@@ -1,18 +1,7 @@
-from salt_lsp.parser import (
-    RequisiteNode,
-    RequisitesNode,
-    StateCallNode,
-    StateNode,
-    StateParameterNode,
-    Tree,
-    parse,
-)
+from lsprotocol.types import Position
+from salt_lsp.parser import (RequisiteNode, RequisitesNode, StateCallNode,
+                             StateNode, StateParameterNode, Tree, parse)
 from salt_lsp.utils import construct_path_to_position
-
-from lsprotocol.types import (
-    Position,
-)
-
 
 MASTER_DOT_SLS = """saltmaster.packages:
   pkg.installed:
@@ -138,3 +127,9 @@ def test_path_before_target():
     assert path[1].identifier == "/srv/git/salt-states"
     assert isinstance(path[2], StateCallNode)
     assert path[2].name == "file.symlink"
+
+
+def test_tree_as_string():
+    out = MASTER_DOT_SLS_TREE.as_string()
+    assert "T(0,0) <-> (45,0)" in out[0]
+    assert "|_P pkgs (2,4) <-> (6,4)" in out[3]
