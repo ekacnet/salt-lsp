@@ -64,6 +64,10 @@ class AstNode(ABC):
     start: Optional[Position] = None
     end: Optional[Position] = None
     parent: Optional[AstNode] = field(compare=False, default=None, repr=False)
+    id: Optional[str] = None
+
+    def get_symbol(self) -> str:
+        return "?"
 
     def visit(self: AstNode, visitor: Callable[[AstNode], bool]) -> None:
         """
@@ -71,6 +75,24 @@ class AstNode(ABC):
         function returns True.
         """
         visitor(self)
+
+    def get_id(self) -> Optional[str]:
+        return None
+
+    def as_string(self, indentation: int = 0) -> List[str]:
+        prefix = ""
+        if indentation > 0:
+            prefix = "|_"
+
+        v = self.get_id()
+        if v is not None:
+            v = f" {v} "
+        else:
+            v = ""
+        ret = [
+            f"{' ' * (indentation-2)}{prefix}{self.get_symbol()}{v}({self.start.line},{self.start.col}) <-> ({self.end.line},{self.end.col})\n"
+        ]
+        return ret
 
 
 class AstMapNode(AstNode, ABC):
@@ -101,6 +123,12 @@ class AstMapNode(AstNode, ABC):
             for child in self.get_children():
                 child.visit(visitor)
 
+    def as_string(self, indentation: int = 0) -> List[str]:
+        ret = super().as_string(indentation)
+        for s in self.get_children():
+            ret.extend(s.as_string(indentation + 2))
+        return ret
+
 
 @dataclass
 class IncludeNode(AstNode):
@@ -109,6 +137,12 @@ class IncludeNode(AstNode):
     """
 
     value: Optional[str] = None
+
+    def get_symbol(self) -> str:
+        return "i"
+
+    def get_id(self) -> Optional[str]:
+        return self.value
 
     def get_file(self: IncludeNode, top_path: str) -> Optional[str]:
         """
@@ -144,6 +178,9 @@ class IncludesNode(AstNode):
 
     includes: List[IncludeNode] = field(default_factory=list)
 
+    def get_symbol(self) -> str:
+        return "I"
+
     def add(self: IncludesNode) -> IncludeNode:
         """
         Add a child node and return it.
@@ -160,6 +197,12 @@ class StateParameterNode(AstNode):
 
     name: Optional[str] = None
     value: Any = None
+
+    def get_symbol(self) -> str:
+        return "P"
+
+    def get_id(self) -> Optional[str]:
+        return self.name
 
     def set_key(self: StateParameterNode, key: str) -> AstNode:
         """
@@ -199,6 +242,12 @@ class RequisiteNode(AstNode):
     module: Optional[str] = None
     reference: Optional[str] = None
 
+    def get_symbol(self) -> str:
+        return "r"
+
+    def get_id(self) -> Optional[str]:
+        return f"{self.module}-{self.reference}"
+
     def set_key(self: RequisiteNode, key: str) -> AstNode:
         """
         Set the module of the requisite
@@ -218,6 +267,12 @@ class RequisitesNode(AstMapNode):
 
     kind: Optional[str] = None
     requisites: List[RequisiteNode] = field(default_factory=list)
+
+    def get_symbol(self) -> str:
+        return "R"
+
+    def get_id(self) -> Optional[str]:
+        return self.kind
 
     def set_key(self: RequisitesNode, key: str) -> AstNode:
         """
@@ -271,6 +326,12 @@ class StateCallNode(AstMapNode):
     parameters: List[StateParameterNode] = field(default_factory=list)
     requisites: List[RequisitesNode] = field(default_factory=list)
 
+    def get_symbol(self) -> str:
+        return "C"
+
+    def get_id(self) -> Optional[str]:
+        return self.name
+
     def add(self: StateCallNode) -> AstNode:
         """
         Add an entry to the tree, the key and value will come later
@@ -323,6 +384,12 @@ class StateNode(AstMapNode):
     identifier: Optional[str] = None
     states: List[StateCallNode] = field(default_factory=list)
 
+    def get_symbol(self) -> str:
+        return "S"
+
+    def get_id(self) -> Optional[str]:
+        return self.identifier
+
     def add(self: StateNode) -> AstNode:
         """
         Add a key token to the tree, the value will come later
@@ -359,6 +426,9 @@ class ExtendNode(AstMapNode):
 
     states: List[StateNode] = field(default_factory=list)
 
+    def get_symbol(self) -> str:
+        return "E"
+
     def add(self: ExtendNode) -> AstNode:
         """
         Add a key token to the tree, the value will come later
@@ -384,6 +454,9 @@ class Tree(AstMapNode):
     includes: Optional[IncludesNode] = None
     extend: Optional[ExtendNode] = None
     states: List[StateNode] = field(default_factory=list)
+
+    def get_symbol(self) -> str:
+        return "T"
 
     def add(self: Tree) -> AstNode:
         """
