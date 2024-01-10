@@ -39,6 +39,23 @@ class StateNameCompletion:
 
         self.state_sub_names: List[str] = list(self.state_params.keys())
 
+    def provide_name_completion(
+        self, prefix: Optional[str] = None
+    ) -> Tuple[bool, ActualCompletions]:
+        """
+        This function provides the names and docstrings of the submodules of
+        this state.
+        If prefix is specified only return completion that starts with this prefix
+        E.g. for the file state, it returns:
+        [("absent", "doc of absent"), ("accumulated", "doc of accumulated"), ]
+
+        The documentation is not guaranteed to be present and can be None.
+        """
+        completions = [(self.state_name, self.state_docs)]
+        if prefix is None:
+            return True, completions
+        return False, list(filter(lambda x: x[0].startswith(prefix), completions))
+
     def provide_subname_completion(
         self, prefix: Optional[str] = None
     ) -> Tuple[bool, ActualCompletions]:
