@@ -1,8 +1,8 @@
-import subprocess
-import shlex
 import json
 import pathlib
 import pickle
+import shlex
+import subprocess
 import tempfile
 from os.path import abspath, dirname
 from typing import Dict
@@ -39,7 +39,13 @@ def dump_state_name_completions() -> None:
 
         for module in mod_list["local"]:
             state_completions[module] = StateNameCompletion(
-                module, mod_list["local"][module], docs["local"]
+                module,
+                mod_list["local"][module],
+                {
+                    k: v
+                    for k, v in docs["local"].items()
+                    if k.startswith(module)
+                },
             )
 
     dest_dir = pathlib.Path(dirname(abspath(__file__))) / "data"
