@@ -46,8 +46,6 @@ class StateNameCompletion:
         This function provides the names and docstrings of the submodules of
         this state.
         If prefix is specified only return completion that starts with this prefix
-        E.g. for the file state, it returns:
-        [("absent", "doc of absent"), ("accumulated", "doc of accumulated"), ]
 
         The documentation is not guaranteed to be present and can be None.
         """
