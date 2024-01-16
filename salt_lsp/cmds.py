@@ -17,7 +17,7 @@ def dump_state_name_completions() -> None:
         salt_dest = pathlib.Path(tmpdirname) / "salt"
         salt_dest.mkdir()
 
-        with open(salt_dest / "minion", "w") as minion_file:
+        with open(salt_dest / "minion", "w", encoding="utf-8") as minion_file:
             minion_file.write(f"root_dir: {tmpdirname}")
 
         mod_list, docs = (

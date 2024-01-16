@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import List, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import List, Optional, Tuple, Union, cast
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
@@ -30,9 +30,6 @@ from salt_lsp.types import (
 from salt_lsp.utils import FileUri
 
 log = logging.getLogger(__name__)
-
-T = TypeVar("T", bound=AstMapNode)
-T2 = TypeVar("T2", bound=AstNode)
 
 
 class Parser:
@@ -152,7 +149,6 @@ class Parser:
             if self._col_adjustment > 0:
                 log.debug(f"Reseting current adjustment { self._col_adjustment } to 0")
                 self._col_adjustment = 0
-            pass
         if (
             isinstance(last, StateParameterNode)
             and self._unprocessed_tokens is not None
@@ -179,9 +175,8 @@ class Parser:
             == (token.start_mark.column + self._col_adjustment)
         )
         if same_level:
-            if (
-                type(token) == yaml.BlockEntryToken
-                and type(self._breadcrumbs[-1]) == StateCallNode
+            if isinstance(token, yaml.BlockEntryToken) and isinstance(
+                self._breadcrumbs[-1], StateCallNode
             ):
                 assert self._breadcrumbs[-1].start is not None
                 self._col_adjustment = self._breadcrumbs[-1].start.col

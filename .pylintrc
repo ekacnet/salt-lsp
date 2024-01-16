@@ -1,0 +1,35 @@
+[main]
+max-branches=18
+[TYPECHECK]
+signature-mutators=click.decorators.option,
+                   click.decorators.argument,
+                   click.decorators.version_option,
+                   click.decorators.help_option,
+                   click.decorators.pass_context,
+                   click.decorators.confirmation_option
+[MESSAGES CONTROL]
+disable=
+    logging-fstring-interpolation,
+    too-many-instance-attributes,
+    len-as-condition,
+    too-few-public-methods,
+    anomalous-backslash-in-string,
+    no-else-return,
+    simplifiable-if-statement,
+    too-many-arguments,
+    duplicate-code,
+    no-name-in-module,
+    no-member,
+    raw-checker-failed,
+    bad-inline-option,
+    locally-disabled,
+    file-ignored,
+    suppressed-message,
+    useless-suppression,
+    deprecated-pragma,
+    import-error,
+    missing-docstring,
+    invalid-name,
+    consider-using-enumerate
+[format]
+max-line-length = 88

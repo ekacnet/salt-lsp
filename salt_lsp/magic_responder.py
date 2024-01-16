@@ -2,7 +2,7 @@ import typing as t
 
 
 def stringify(v: t.Any):
-    if type(v) is str:
+    if isinstance(v, str):
         return f"'{str(v)}'"
     else:
         return str(v)
@@ -24,7 +24,11 @@ class MagicResponder:
         return MagicResponder(name)
 
     def get(self, *args: t.Any, **kwargs: t.Any) -> "MagicResponder":
-        name = f"{self.parent_string}.get({', '.join(stringify_array(args))})"
+        kw_strings = [f"{k}= {v}" for k, v in kwargs.items()]
+        name = (
+            f"{self.parent_string}."
+            f"get({(', '.join(stringify_array(args)))+(', '.join(kw_strings))})"
+        )
         return MagicResponder(name)
 
     def __getattr__(self, attr) -> "MagicResponder":
